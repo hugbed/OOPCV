@@ -13,18 +13,26 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "Camera.h"
 
 using std::cout;
 using std::endl;
 
 const GLuint WIDTH = 800, HEIGHT = 600;
 
-glm::vec3 g_cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
-glm::vec3 g_cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 g_cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
+GLfloat deltaTime = 0.0f;
+GLfloat lastFrame = 0.0f;
+
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+bool keys[1024];
+GLfloat g_lastX = 400, g_lastY = 300;
+bool g_firstMouse = true;
 
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void doMovement();
 
 void _check_gl_error(bool silent) {
     GLenum err (glGetError());
@@ -141,6 +149,8 @@ int main() {
 
     // Set the required callback functions
     glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     if (!initGLEW()) return -1;
 
@@ -156,12 +166,6 @@ int main() {
     glPointSize(10.f);
 
     // Transform
-    glm::mat4 initTransform;
-
-    glm::mat4 model;
-    model= glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    glm::mat4 projection = glm::perspective(45.0f, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
-
     glm::mat4 view;
     view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
                        glm::vec3(0.0f, 0.0f, 0.0f),
@@ -183,8 +187,13 @@ int main() {
     // Game loop
     while (!glfwWindowShouldClose(window))
     {
+        GLfloat currentFrame = (GLfloat)glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
         // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
         glfwPollEvents();
+        doMovement();
 
         // Clear the colorbuffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -192,7 +201,8 @@ int main() {
         shader.use();
 
         // compute view matrix
-        view = glm::lookAt(g_cameraPos, g_cameraPos + g_cameraFront, g_cameraUp);
+        view = camera.GetViewMatrix();
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
 
         GLint modelLoc = glGetUniformLocation(shader.program, "model");
         GLint viewLoc = glGetUniformLocation(shader.program, "view");
@@ -206,7 +216,7 @@ int main() {
 
         for(GLuint i = 0; i < 10; i++)
         {
-            model = glm::mat4();
+            glm::mat4 model = glm::mat4();
             model = glm::translate(model, cubePositions[i]);
             GLfloat angle = 20.0f * i;
             model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
@@ -236,13 +246,42 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
 
-    GLfloat cameraSpeed = 0.05f;
-    if(key == GLFW_KEY_W)
-        g_cameraPos += cameraSpeed * g_cameraFront;
-    if(key == GLFW_KEY_S)
-        g_cameraPos -= cameraSpeed * g_cameraFront;
-    if(key == GLFW_KEY_A)
-        g_cameraPos -= glm::normalize(glm::cross(g_cameraFront, g_cameraUp)) * cameraSpeed;
-    if(key == GLFW_KEY_D)
-        g_cameraPos += glm::normalize(glm::cross(g_cameraFront, g_cameraUp)) * cameraSpeed;
+    if (action == GLFW_PRESS)
+        keys[key] = true;
+    else if (action == GLFW_RELEASE)
+        keys[key] = false;
+}
+
+void doMovement()
+{
+    if(keys[GLFW_KEY_W])
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if(keys[GLFW_KEY_S])
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if(keys[GLFW_KEY_A])
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if(keys[GLFW_KEY_D])
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if(g_firstMouse)
+    {
+        g_lastX = (GLfloat)xpos;
+        g_lastY = (GLfloat)ypos;
+        g_firstMouse = false;
+    }
+
+    GLfloat xoffset = (GLfloat)xpos - g_lastX;
+    GLfloat yoffset = g_lastY - (GLfloat)ypos;
+    g_lastX = (GLfloat)xpos;
+    g_lastY = (GLfloat)ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    camera.ProcessMouseScroll((GLfloat)yoffset);
 }
