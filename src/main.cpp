@@ -13,10 +13,15 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-const GLuint WIDTH = 800, HEIGHT = 600;
 
 using std::cout;
 using std::endl;
+
+const GLuint WIDTH = 800, HEIGHT = 600;
+
+glm::vec3 g_cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
+glm::vec3 g_cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 g_cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
 
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
@@ -85,6 +90,7 @@ void initViewport(GLFWwindow *window)
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     glViewport(0, 0, width, height);
+    glEnable(GL_DEPTH_TEST);
 }
 
 bool createVAO(GLuint &VAO)
@@ -152,6 +158,28 @@ int main() {
     // Transform
     glm::mat4 initTransform;
 
+    glm::mat4 model;
+    model= glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    glm::mat4 projection = glm::perspective(45.0f, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
+
+    glm::mat4 view;
+    view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
+                       glm::vec3(0.0f, 0.0f, 0.0f),
+                       glm::vec3(0.0f, 1.0f, 0.0f));
+
+    glm::vec3 cubePositions[] = {
+            glm::vec3( 0.0f,  0.0f,  0.0f),
+            glm::vec3( 2.0f,  5.0f, -15.0f),
+            glm::vec3(-1.5f, -2.2f, -2.5f),
+            glm::vec3(-3.8f, -2.0f, -12.3f),
+            glm::vec3( 2.4f, -0.4f, -3.5f),
+            glm::vec3(-1.7f,  3.0f, -7.5f),
+            glm::vec3( 1.3f, -2.0f, -2.5f),
+            glm::vec3( 1.5f,  2.0f, -2.5f),
+            glm::vec3( 1.5f,  0.2f, -1.5f),
+            glm::vec3(-1.3f,  1.0f, -1.5f)
+    };
+
     // Game loop
     while (!glfwWindowShouldClose(window))
     {
@@ -159,18 +187,35 @@ int main() {
         glfwPollEvents();
 
         // Clear the colorbuffer
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.use();
 
-        glm::mat4 transform = glm::rotate(initTransform, glm::radians((GLfloat)glfwGetTime() * 10.0f), glm::vec3(0.0, 0.0, 1.0));
-        GLint transformLocation = glGetUniformLocation(shader.program, "transform");
-        glUniformMatrix4fv(transformLocation, 1, GL_FALSE, glm::value_ptr(transform));
+        // compute view matrix
+        view = glm::lookAt(g_cameraPos, g_cameraPos + g_cameraFront, g_cameraUp);
+
+        GLint modelLoc = glGetUniformLocation(shader.program, "model");
+        GLint viewLoc = glGetUniformLocation(shader.program, "view");
+        GLint projectionLoc = glGetUniformLocation(shader.program, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
         // Render
         // do great stuff here
         glBindVertexArray(VAO);
-        glDrawElements(GL_POINTS, 6, GL_UNSIGNED_INT, 0);
+
+        for(GLuint i = 0; i < 10; i++)
+        {
+            model = glm::mat4();
+            model = glm::translate(model, cubePositions[i]);
+            GLfloat angle = 20.0f * i;
+            model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         // Swap the screen buffers
@@ -190,4 +235,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     std::cout << key << std::endl;
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+
+    GLfloat cameraSpeed = 0.05f;
+    if(key == GLFW_KEY_W)
+        g_cameraPos += cameraSpeed * g_cameraFront;
+    if(key == GLFW_KEY_S)
+        g_cameraPos -= cameraSpeed * g_cameraFront;
+    if(key == GLFW_KEY_A)
+        g_cameraPos -= glm::normalize(glm::cross(g_cameraFront, g_cameraUp)) * cameraSpeed;
+    if(key == GLFW_KEY_D)
+        g_cameraPos += glm::normalize(glm::cross(g_cameraFront, g_cameraUp)) * cameraSpeed;
 }
