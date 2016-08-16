@@ -25,7 +25,7 @@ set(LIBS ${GLFW3_LIBRARY} X11 Xrandr Xinerama Xi Xxf86vm Xcursor GL dl pthread G
 
 
 # executable
-add_library(Utils src/Shader.cpp src/Camera.cpp)
+add_library(Utils src/Mesh.cpp src/Shader.cpp src/Camera.cpp)
 add_executable(OPCViewer src/main.cpp)
 target_link_libraries(OPCViewer ${LIBS} Utils)
 
