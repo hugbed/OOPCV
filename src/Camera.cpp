@@ -88,7 +88,6 @@ void Camera::ProcessKeyboard(Camera_Movement direction, GLfloat deltaTime)
         this->Position += this->Right * velocity;
 }
 
-
 glm::mat4 Camera::GetViewMatrix()
 {
     return glm::lookAt(this->Position, this->Position + this->Front, this->Up);

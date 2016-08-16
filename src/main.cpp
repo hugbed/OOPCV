@@ -136,13 +136,12 @@ int main() {
 
     initViewport(window);
 
-    Shader shader("shaders/basic.vs", "shaders/basic.fs");
+    Shader shader("shaders/points.vs", "shaders/points.fs");
 
     Mesh triangleMesh = createTriangleMesh();
 
     glClearColor(0.f, 0.f, 0.f, 1.0f);
     glEnable(GL_PROGRAM_POINT_SIZE);
-    glPointSize(10.f);
 
     // Transform
     glm::mat4 view;
@@ -189,6 +188,16 @@ int main() {
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
+        int viewport[4];
+        glGetIntegerv(GL_VIEWPORT,viewport);
+        float heightOfNearPlane = (float)abs(viewport[3]-viewport[1]) /
+                                  (2*(float)tan(0.5*camera.Zoom*3.1416/180.0));
+
+        GLint pointSizeLoc = glGetUniformLocation(shader.program, "pointSize");
+        GLint heightOfNearPlaneLoc = glGetUniformLocation(shader.program, "heightOfNearPlane");
+        glUniform1f(pointSizeLoc, 0.1f);
+        glUniform1f(heightOfNearPlaneLoc, heightOfNearPlane);
+
         for(GLuint i = 0; i < 10; i++)
         {
             glm::mat4 model = glm::mat4();
@@ -196,6 +205,7 @@ int main() {
             GLfloat angle = 20.0f * i;
             model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+            glPointSize(10.0f);
             triangleMesh.Draw(shader);
         }
 
