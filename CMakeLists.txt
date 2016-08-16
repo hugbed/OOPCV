@@ -13,6 +13,8 @@ find_package(GLFW3 REQUIRED)
 message(STATUS "Found GLFW3 in ${GLFW3_INCLUDE_DIR}")
 find_package(GLEW REQUIRED)
 message(STATUS "Found GLEW in ${GLEW_INCLUDE_DIR}")
+find_package(OpenVR REQUIRED)
+message(STATUS "Found OpenVR in ${OPENVR_INCLUDE_DIR}")
 
 # libraries
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
