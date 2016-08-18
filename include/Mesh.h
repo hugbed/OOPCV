@@ -5,7 +5,9 @@
 #ifndef OPCVIEWER_MESH_H
 #define OPCVIEWER_MESH_H
 
-#include <GL/glew.h>
+#define GLEW_STATIC
+#include "GL/glew.h"
+
 #include <glm/glm.hpp>
 
 #include "Shader.h"

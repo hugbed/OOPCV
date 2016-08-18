@@ -21,8 +21,8 @@ Shader::Shader(const GLchar* vertexPath, const GLchar* fragmentPath, const GLcha
     try
     {
         // Open files
-        vShaderFile.open(vertexPath);
-        fShaderFile.open(fragmentPath);
+        vShaderFile.open(vertexPath, std::ios::in);
+        fShaderFile.open(fragmentPath, std::ios::in);
         std::stringstream vShaderStream, fShaderStream;
 
         // Read file's buffer contents into streams
@@ -49,7 +49,7 @@ Shader::Shader(const GLchar* vertexPath, const GLchar* fragmentPath, const GLcha
     }
     catch (std::ifstream::failure e)
     {
-        std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+        std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ : " << strerror(errno) << std::endl;
     }
     const GLchar* vShaderCode = vertexCode.c_str();
     const GLchar * fShaderCode = fragmentCode.c_str();

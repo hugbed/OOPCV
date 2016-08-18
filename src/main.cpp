@@ -1,5 +1,12 @@
 #include <iostream>
 
+// todo : this is ugly
+#define _WIN
+
+#ifdef _WIN
+#include <windows.h>
+#endif
+
 // GLEW
 #define GLEW_STATIC
 #include <GL/glew.h>
@@ -35,7 +42,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void doMovement();
 
-void _check_gl_error(bool silent) {
+void _check_gl_error() {
     GLenum err (glGetError());
 
     while(err!=GL_NO_ERROR) {
@@ -50,11 +57,20 @@ void _check_gl_error(bool silent) {
             default:break;
         }
 
-        if (!silent) {
-            std::cerr << "GL_" << error.c_str() << std::endl;
-        }
+        std::cerr << "GL_" << error.c_str() << std::endl;
         err=glGetError();
     }
+}
+
+std::string getCurrentDirectory() {
+#ifdef _WIN
+	char buffer[MAX_PATH];
+	GetModuleFileName(NULL, buffer, MAX_PATH);
+	std::string::size_type pos = std::string(buffer).find_last_of("\\/");
+	return std::string(buffer).substr(0, pos);
+#else
+	return std::string(".")
+#endif
 }
 
 bool initWindow(GLFWwindow *&window)
@@ -76,6 +92,13 @@ bool initWindow(GLFWwindow *&window)
         glfwTerminate();
         return false;
     }
+
+	glfwMakeContextCurrent(window);
+	
+	// Negative numbers allow buffer swaps even if they are after the vertical retrace,
+	// but that causes stuttering in VR mode
+	glfwSwapInterval(0);
+
     return true;
 }
 
@@ -89,7 +112,8 @@ bool initGLEW()
         std::cout << "Failed to initialize GLEW" << std::endl;
         return false;
     }
-    _check_gl_error(true);
+	// Clear startup errors
+	while (glGetError() != GL_NONE) {}
 
     return true;
 }
@@ -136,7 +160,14 @@ int main() {
 
     initViewport(window);
 
-    Shader shader("shaders/points.vs", "shaders/points.fs");
+	char buffer[MAX_PATH];
+	GetModuleFileName(NULL, buffer, MAX_PATH);
+	std::cout << "Current directory : " << buffer << std::endl;
+
+	const char* vsPath = "";
+	const char* fsPath = "";
+
+    Shader shader((getCurrentDirectory() + "/shaders/points.vs").c_str(), (getCurrentDirectory() + "/shaders/points.fs").c_str());
 
     Mesh triangleMesh = createTriangleMesh();
 

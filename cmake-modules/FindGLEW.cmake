@@ -11,22 +11,25 @@ IF (WIN32)
             ${CMAKE_SOURCE_DIR}/includes
             $ENV{PROGRAMFILES}/GLEW/include
             ${GLEW_ROOT_DIR}/include
+            $ENV{GLEW_ROOT_DIR}/include
             DOC "The directory where GL/glew.h resides")
     IF (NV_SYSTEM_PROCESSOR STREQUAL "AMD64")
         FIND_LIBRARY( GLEW_LIBRARY
-                NAMES glew64 glew64s
+                NAMES glew64s # glew64 # was not able to link dynamically on windows...
                 PATHS
                 $ENV{PROGRAMFILES}/GLEW/lib
+                $ENV{GLEW_ROOT_DIR}/lib/Release/Win64
                 ${PROJECT_SOURCE_DIR}/src/nvgl/glew/bin
                 ${PROJECT_SOURCE_DIR}/src/nvgl/glew/lib
                 DOC "The GLEW library (64-bit)"
                 )
     ELSE(NV_SYSTEM_PROCESSOR STREQUAL "AMD64")
         FIND_LIBRARY( GLEW_LIBRARY
-                NAMES glew GLEW glew32 glew32s
+                NAMES glew GLEW glew32s # glew32 # was not able to link dynamically on windows...
                 PATHS
                 ${CMAKE_SOURCE_DIR}/lib
                 $ENV{PROGRAMFILES}/GLEW/lib
+                $ENV{GLEW_ROOT_DIR}/lib/Release/Win32
                 ${PROJECT_SOURCE_DIR}/src/nvgl/glew/bin
                 ${PROJECT_SOURCE_DIR}/src/nvgl/glew/lib
                 DOC "The GLEW library"
