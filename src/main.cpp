@@ -261,13 +261,27 @@ int main() {
 		const float farPlaneZ = -100.0f;
 		const float verticalFieldOfView = 45.0f * PI / 180.0f;
 		Matrix4x4 eyeToHead[numEyes], projectionMatrix[numEyes], headToBodyMatrix;
-		glm::mat4 eyeToHeadGLM[numEyes], projectionGLM[numEyes], headToBodyMatrixGLM;
+		glm::mat4 headToEyeGLM[numEyes], projectionGLM[numEyes], headToBodyMatrixGLM;
+		glm::mat4 bodyToHead;
+
 #   ifdef _VR
-		getEyeTransformations(hmd, trackedDevicePose, nearPlaneZ, farPlaneZ, headToBodyMatrix.data, eyeToHead[0].data, eyeToHead[1].data, projectionMatrix[0].data, projectionMatrix[1].data);
-		//getEyeTransformations(hmd, trackedDevicePose, nearPlaneZ, farPlaneZ, glm::value_ptr(headToBodyMatrixGLM), glm::value_ptr(eyeToHeadGLM[0]), glm::value_ptr(eyeToHeadGLM[1]), glm::value_ptr(projectionGLM[0]), glm::value_ptr(projectionGLM[1]));
+		//getEyeTransformations(hmd, trackedDevicePose, nearPlaneZ, farPlaneZ, headToBodyMatrix.data, eyeToHead[0].data, eyeToHead[1].data, projectionMatrix[0].data, projectionMatrix[1].data);
+		//getEyeTransformations(hmd, trackedDevicePose, nearPlaneZ, farPlaneZ, glm::value_ptr(headToBodyMatrixGLM), glm::value_ptr(headToEyeGLM[0]), glm::value_ptr(headToEyeGLM[1]), glm::value_ptr(projectionGLM[0]), glm::value_ptr(projectionGLM[1]));
+
+		vr::VRCompositor()->WaitGetPoses(trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0);
+		assert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid);
+		glm::mat4x3 headToBody = convert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
+		bodyToHead = glm::inverse(glm::mat4(headToBody));
+
+		headToEyeGLM[0] = getHeadToEyeTransform(hmd, vr::Eye_Left);
+		headToEyeGLM[1] = getHeadToEyeTransform(hmd, vr::Eye_Right);
+
+		projectionGLM[0] = getProjectionMatrix(hmd, vr::Eye_Left, -nearPlaneZ, -farPlaneZ);
+		projectionGLM[1] = getProjectionMatrix(hmd, vr::Eye_Right, -nearPlaneZ, -farPlaneZ);
+
 #   else
 		projectionMatrix[0] = Matrix4x4::perspective(float(framebufferWidth), float(framebufferHeight), nearPlaneZ, farPlaneZ, verticalFieldOfView);
-		projectionGLM[0] = glm::perspective(verticalFieldOfView, framebufferWidth / framebufferHeight, nearPlaneZ, farPlaneZ);
+		projectionGLM[0] = glm::perspective(verticalFieldOfView, (float)framebufferWidth / (float)framebufferHeight, nearPlaneZ, farPlaneZ);
 #   endif
 
         GLfloat currentFrame = (GLfloat)glfwGetTime();
@@ -279,6 +293,8 @@ int main() {
         doMovement();
 
 		//view = camera.GetViewMatrix();
+
+		const glm::mat4 headToWorldGLM = glm::translate(glm::mat4(), camera.Position) * headToBodyMatrixGLM;
 		view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
 
@@ -289,13 +305,16 @@ int main() {
 			// Clear the colorbuffer
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+			// worldToBody (inverse?)
+			const glm::mat4 viewGLM = headToEyeGLM[eye] * bodyToHead * glm::translate(glm::mat4(), camera.Position);
+			
 			shader.use();
 
 			GLint modelLoc = glGetUniformLocation(shader.program, "model");
 			GLint viewLoc = glGetUniformLocation(shader.program, "view");
 			GLint projectionLoc = glGetUniformLocation(shader.program, "projection");
-			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projectionGLM[eye]));
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(viewGLM));
 
 			int viewport[4];
 			glGetIntegerv(GL_VIEWPORT,viewport);

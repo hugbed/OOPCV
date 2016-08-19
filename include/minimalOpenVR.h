@@ -22,9 +22,38 @@ running an OpenVR program.
 #include "openvr/openvr.h"
 #include <string>
 
+#include "glm/glm.hpp"
+
 //#ifdef _WIN
 //#   pragma comment(lib, "openvr_api")
 //#endif
+
+glm::mat4x3 convert(const vr::HmdMatrix34_t &m) {
+	return glm::mat4x3(
+		m.m[0][0], m.m[1][0], m.m[2][0],
+		m.m[0][1], m.m[1][1], m.m[2][1],
+		m.m[0][2], m.m[1][2], m.m[2][2],
+		m.m[0][3], m.m[1][3], m.m[2][3]);
+}
+
+glm::mat4 convert(const vr::HmdMatrix44_t &m) {
+	return glm::mat4(
+		m.m[0][0], m.m[1][0], m.m[2][0], m.m[3][0],
+		m.m[0][1], m.m[1][1], m.m[2][1], m.m[3][1],
+		m.m[0][2], m.m[1][2], m.m[2][2], m.m[3][2],
+		m.m[0][3], m.m[1][3], m.m[2][3], m.m[3][3]);
+}
+
+glm::mat4 getProjectionMatrix(vr::IVRSystem* hmd, vr::Hmd_Eye nEye, float nearZ, float farZ)
+{
+	const vr::HmdMatrix44_t mat(hmd->GetProjectionMatrix(nEye, nearZ, farZ,
+		vr::API_OpenGL));
+	return convert(mat);
+}
+
+glm::mat4 getHeadToEyeTransform(vr::IVRSystem* hmd, vr::Hmd_Eye nEye) {
+	return glm::inverse(glm::mat4(convert(hmd->GetEyeToHeadTransform(nEye))));
+}
 
 /** Called by initOpenVR */
 std::string getHMDString(vr::IVRSystem* pHmd, vr::TrackedDeviceIndex_t unDevice, vr::TrackedDeviceProperty prop, vr::TrackedPropertyError* peError = nullptr) {
