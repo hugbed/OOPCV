@@ -2,6 +2,7 @@
 
 // todo : this is ugly
 #define _WIN
+#define _VR
 
 #ifdef _WIN
 #include <windows.h>
@@ -21,6 +22,14 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <Mesh.h>
 
+#include "minimalOpenGL.h"
+
+// VR
+#ifdef _VR
+#include "minimalOpenVR.h"
+#endif
+
+#include "matrix.h"
 #include "Camera.h"
 
 using std::cout;
@@ -35,6 +44,10 @@ Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 bool keys[1024];
 GLfloat g_lastX = 400, g_lastY = 300;
 bool g_firstMouse = true;
+
+#ifdef _VR
+vr::IVRSystem* hmd = nullptr;
+#endif
 
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
@@ -73,7 +86,7 @@ std::string getCurrentDirectory() {
 #endif
 }
 
-bool initWindow(GLFWwindow *&window)
+bool initWindow(int windowWidth, int windowHeight, GLFWwindow *&window)
 {
     // Init GLFW
     glfwInit();
@@ -84,7 +97,7 @@ bool initWindow(GLFWwindow *&window)
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     // Create a GLFWwindow object that we can use for GLFW's functions
-    window = glfwCreateWindow(WIDTH, HEIGHT, "LearnOpenGL", nullptr, nullptr);
+    window = glfwCreateWindow(windowWidth, windowHeight, "LearnOpenGL", nullptr, nullptr);
     glfwMakeContextCurrent(window);
     if (window == NULL)
     {
@@ -148,8 +161,20 @@ Mesh createTriangleMesh()
 int main() {
     std::cout << "Starting GLFW context, OpenGL 3.3" << std::endl;
 
+	uint32_t framebufferWidth = 1280, framebufferHeight = 720;
+# ifdef _VR
+	const int numEyes = 2;
+	hmd = initOpenVR(framebufferWidth, framebufferHeight);
+	assert(hmd);
+# else
+	const int numEyes = 1;
+# endif
+
+	const int windowHeight = 720;
+	const int windowWidth = (framebufferWidth * windowHeight) / framebufferHeight;
     GLFWwindow *window = nullptr;
-    if (!initWindow(window)) return -1;
+    //if (!initWindow(windowWidth, windowHeight, window)) return -1;
+	window = initOpenGL(windowWidth, windowHeight, "minimalOpenGL");
 
     // Set the required callback functions
     glfwSetKeyCallback(window, key_callback);
@@ -160,16 +185,45 @@ int main() {
 
     initViewport(window);
 
-	char buffer[MAX_PATH];
-	GetModuleFileName(NULL, buffer, MAX_PATH);
-	std::cout << "Current directory : " << buffer << std::endl;
+	//////////////////////////////////////////////////////////////////////
+	// Allocate the frame buffer. This code allocates one framebuffer per eye.
+	// That requires more GPU memory, but is useful when performing temporal 
+	// filtering or making render calls that can target both simultaneously.
 
-	const char* vsPath = "";
-	const char* fsPath = "";
+	GLuint framebuffer[numEyes];
+	glGenFramebuffers(numEyes, framebuffer);
 
-    Shader shader((getCurrentDirectory() + "/shaders/points.vs").c_str(), (getCurrentDirectory() + "/shaders/points.fs").c_str());
+	GLuint colorRenderTarget[numEyes], depthRenderTarget[numEyes];
+	glGenTextures(numEyes, colorRenderTarget);
+	glGenTextures(numEyes, depthRenderTarget);
+	for (int eye = 0; eye < numEyes; ++eye) {
+		glBindTexture(GL_TEXTURE_2D, colorRenderTarget[eye]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, framebufferWidth, framebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-    Mesh triangleMesh = createTriangleMesh();
+		glBindTexture(GL_TEXTURE_2D, depthRenderTarget[eye]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, framebufferWidth, framebufferHeight, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer[eye]);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorRenderTarget[eye], 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthRenderTarget[eye], 0);
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	/////////////////////////////////////////////////////////////////
+	// Load vertex array buffers
+	Mesh triangleMesh = createTriangleMesh();
+
+	/////////////////////////////////////////////////////////////////////
+	// Create the main shader
+	Shader shader((getCurrentDirectory() + "/shaders/points.vs").c_str(), (getCurrentDirectory() + "/shaders/points.fs").c_str());
 
     glClearColor(0.f, 0.f, 0.f, 1.0f);
     glEnable(GL_PROGRAM_POINT_SIZE);
@@ -193,9 +247,29 @@ int main() {
             glm::vec3(-1.3f,  1.0f, -1.5f)
     };
 
+
+# ifdef _VR
+	vr::TrackedDevicePose_t trackedDevicePose[vr::k_unMaxTrackedDeviceCount];
+# endif
+
     // Game loop
     while (!glfwWindowShouldClose(window))
     {
+		assert(glGetError() == GL_NONE);
+
+		const float nearPlaneZ = -0.1f;
+		const float farPlaneZ = -100.0f;
+		const float verticalFieldOfView = 45.0f * PI / 180.0f;
+		Matrix4x4 eyeToHead[numEyes], projectionMatrix[numEyes], headToBodyMatrix;
+		glm::mat4 eyeToHeadGLM[numEyes], projectionGLM[numEyes], headToBodyMatrixGLM;
+#   ifdef _VR
+		getEyeTransformations(hmd, trackedDevicePose, nearPlaneZ, farPlaneZ, headToBodyMatrix.data, eyeToHead[0].data, eyeToHead[1].data, projectionMatrix[0].data, projectionMatrix[1].data);
+		//getEyeTransformations(hmd, trackedDevicePose, nearPlaneZ, farPlaneZ, glm::value_ptr(headToBodyMatrixGLM), glm::value_ptr(eyeToHeadGLM[0]), glm::value_ptr(eyeToHeadGLM[1]), glm::value_ptr(projectionGLM[0]), glm::value_ptr(projectionGLM[1]));
+#   else
+		projectionMatrix[0] = Matrix4x4::perspective(float(framebufferWidth), float(framebufferHeight), nearPlaneZ, farPlaneZ, verticalFieldOfView);
+		projectionGLM[0] = glm::perspective(verticalFieldOfView, framebufferWidth / framebufferHeight, nearPlaneZ, farPlaneZ);
+#   endif
+
         GLfloat currentFrame = (GLfloat)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
@@ -204,45 +278,77 @@ int main() {
         glfwPollEvents();
         doMovement();
 
-        // Clear the colorbuffer
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        shader.use();
-
-        // compute view matrix
-        view = camera.GetViewMatrix();
+		//view = camera.GetViewMatrix();
+		view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
 
-        GLint modelLoc = glGetUniformLocation(shader.program, "model");
-        GLint viewLoc = glGetUniformLocation(shader.program, "view");
-        GLint projectionLoc = glGetUniformLocation(shader.program, "projection");
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+		for (int eye = 0; eye < numEyes; ++eye) {
+			glBindFramebuffer(GL_FRAMEBUFFER, framebuffer[eye]);
+			glViewport(0, 0, framebufferWidth, framebufferHeight);
 
-        int viewport[4];
-        glGetIntegerv(GL_VIEWPORT,viewport);
-        float heightOfNearPlane = (float)abs(viewport[3]-viewport[1]) /
-                                  (2*(float)tan(0.5*camera.Zoom*3.1416/180.0));
+			// Clear the colorbuffer
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        GLint pointSizeLoc = glGetUniformLocation(shader.program, "pointSize");
-        GLint heightOfNearPlaneLoc = glGetUniformLocation(shader.program, "heightOfNearPlane");
-        glUniform1f(pointSizeLoc, 0.1f);
-        glUniform1f(heightOfNearPlaneLoc, heightOfNearPlane);
+			shader.use();
 
-        for(GLuint i = 0; i < 10; i++)
-        {
-            glm::mat4 model = glm::mat4();
-            model = glm::translate(model, trianglePositions[i]);
-            GLfloat angle = 20.0f * i;
-            model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
-            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-            glPointSize(10.0f);
-            triangleMesh.Draw(shader);
-        }
+			GLint modelLoc = glGetUniformLocation(shader.program, "model");
+			GLint viewLoc = glGetUniformLocation(shader.program, "view");
+			GLint projectionLoc = glGetUniformLocation(shader.program, "projection");
+			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+			int viewport[4];
+			glGetIntegerv(GL_VIEWPORT,viewport);
+			float heightOfNearPlane = (float)abs(viewport[3]-viewport[1]) /
+									  (2*(float)tan(0.5*camera.Zoom*3.1416/180.0));
+
+			GLint pointSizeLoc = glGetUniformLocation(shader.program, "pointSize");
+			GLint heightOfNearPlaneLoc = glGetUniformLocation(shader.program, "heightOfNearPlane");
+			glUniform1f(pointSizeLoc, 0.1f);
+			glUniform1f(heightOfNearPlaneLoc, heightOfNearPlane);
+
+			for(GLuint i = 0; i < 10; i++)
+			{
+				glm::mat4 model = glm::mat4();
+				model = glm::translate(model, trianglePositions[i]);
+				GLfloat angle = 20.0f * i;
+				model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+				glPointSize(10.0f);
+				triangleMesh.Draw(shader);
+			}
+
+#		ifdef _VR
+			{
+				const vr::Texture_t tex = { reinterpret_cast<void*>(intptr_t(colorRenderTarget[eye])), vr::API_OpenGL, vr::ColorSpace_Gamma };
+				vr::VRCompositor()->Submit(vr::EVREye(eye), &tex);
+			}
+#       endif
+
+		} // for each eye
+
+		////////////////////////////////////////////////////////////////////////
+#	ifdef _VR
+		  // Tell the compositor to begin work immediately instead of waiting for the next WaitGetPoses() call
+		vr::VRCompositor()->PostPresentHandoff();
+#   endif
+
+		// Mirror to the window
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GL_NONE);
+		glViewport(0, 0, windowWidth, windowHeight);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glBlitFramebuffer(0, 0, framebufferWidth, framebufferHeight, 0, 0, windowWidth, windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, GL_NONE);
 
         // Swap the screen buffers
         glfwSwapBuffers(window);
     }
+
+#   ifdef _VR
+	if (hmd != nullptr) {
+		vr::VR_Shutdown();
+	}
+#   endif
 
     // Terminate GLFW, clearing any resources allocated by GLFW.
     glfwTerminate();
