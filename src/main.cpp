@@ -49,31 +49,13 @@ bool g_firstMouse = true;
 vr::IVRSystem* hmd = nullptr;
 #endif
 
+int main();
+
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void doMovement();
-
-void _check_gl_error() {
-    GLenum err (glGetError());
-
-    while(err!=GL_NO_ERROR) {
-        std::string error;
-
-        switch(err) {
-            case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
-            case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
-            case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
-            case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
-            case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
-            default:break;
-        }
-
-        std::cerr << "GL_" << error.c_str() << std::endl;
-        err=glGetError();
-    }
-}
 
 std::string getCurrentDirectory() {
 #ifdef _WIN
@@ -84,78 +66,6 @@ std::string getCurrentDirectory() {
 #else
 	return std::string(".")
 #endif
-}
-
-bool initWindow(int windowWidth, int windowHeight, GLFWwindow *&window)
-{
-    // Init GLFW
-    glfwInit();
-    // Set all the required options for GLFW
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-    // Create a GLFWwindow object that we can use for GLFW's functions
-    window = glfwCreateWindow(windowWidth, windowHeight, "LearnOpenGL", nullptr, nullptr);
-    glfwMakeContextCurrent(window);
-    if (window == NULL)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return false;
-    }
-
-	glfwMakeContextCurrent(window);
-	
-	// Negative numbers allow buffer swaps even if they are after the vertical retrace,
-	// but that causes stuttering in VR mode
-	glfwSwapInterval(0);
-
-    return true;
-}
-
-bool initGLEW()
-{
-    // Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
-    glewExperimental = GL_TRUE;
-    // Initialize GLEW to setup the OpenGL Function pointers
-    if (glewInit() != GLEW_OK)
-    {
-        std::cout << "Failed to initialize GLEW" << std::endl;
-        return false;
-    }
-	// Clear startup errors
-	while (glGetError() != GL_NONE) {}
-
-    return true;
-}
-
-void initViewport(GLFWwindow *window)
-{
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glViewport(0, 0, width, height);
-    glEnable(GL_DEPTH_TEST);
-}
-
-Mesh createTriangleMesh()
-{
-    Vertex vertices[] = {
-            // Positions                          // Colors
-            { glm::vec3( 0.5f, -0.5f, 0.0f),  glm::vec3(1.0f, 0.0f, 0.0f) },  // Bottom Right
-            { glm::vec3(-0.5f, -0.5f, 0.0f),  glm::vec3(0.0f, 1.0f, 0.0f) },  // Bottom Left
-            { glm::vec3( 0.0f,  0.5f, 0.0f),  glm::vec3(0.0f, 0.0f, 1.0f) }   // Top
-    };
-
-    GLuint indices[] = {  // Note that we start from 0!
-        0, 1, 2  // First Triangle
-    };
-
-    Mesh triangleMesh(std::vector<Vertex>(vertices, vertices + sizeof(vertices) / sizeof(vertices[0])),
-                      std::vector<GLuint>(indices, indices + sizeof(indices) / sizeof(indices[0])));
-
-    return triangleMesh;
 }
 
 int main() {
@@ -170,82 +80,58 @@ int main() {
 	const int numEyes = 1;
 # endif
 
+	GLFWwindow *window = nullptr;
 	const int windowHeight = 720;
 	const int windowWidth = (framebufferWidth * windowHeight) / framebufferHeight;
-    GLFWwindow *window = nullptr;
-    if (!initWindow(windowWidth, windowHeight, window)) return -1;
+    if (!GL::initWindow(windowWidth, windowHeight, window)) return -1;
+    if (!GL::initGLEW()) return -1;
+	GL::initViewport(window);
 
-    // Set the required callback functions
-    glfwSetKeyCallback(window, key_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-
-    if (!initGLEW()) return -1;
-
-    initViewport(window);
+	/////////////////////////////////////////////////////////////////
+	// Set the required callback functions
+	glfwSetKeyCallback(window, key_callback);
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetScrollCallback(window, scroll_callback);
 
 	//////////////////////////////////////////////////////////////////////
 	// Allocate the frame buffer. This code allocates one framebuffer per eye.
 	// That requires more GPU memory, but is useful when performing temporal 
 	// filtering or making render calls that can target both simultaneously.
-
 	GLuint framebuffer[numEyes];
-	glGenFramebuffers(numEyes, framebuffer);
-
 	GLuint colorRenderTarget[numEyes], depthRenderTarget[numEyes];
-	glGenTextures(numEyes, colorRenderTarget);
-	glGenTextures(numEyes, depthRenderTarget);
-	for (int eye = 0; eye < numEyes; ++eye) {
-		glBindTexture(GL_TEXTURE_2D, colorRenderTarget[eye]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, framebufferWidth, framebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-		glBindTexture(GL_TEXTURE_2D, depthRenderTarget[eye]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, framebufferWidth, framebufferHeight, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
-
-		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer[eye]);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorRenderTarget[eye], 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthRenderTarget[eye], 0);
-	}
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	GL::initFrameBuffersAndTextures(numEyes, framebufferWidth, framebufferHeight, framebuffer, colorRenderTarget, depthRenderTarget);
 
 	/////////////////////////////////////////////////////////////////
 	// Load vertex array buffers
-	Mesh triangleMesh = createTriangleMesh();
+	Mesh triangleMesh = GL::createTriangleMesh();
+
+	glm::vec3 trianglePositions[] = {
+		glm::vec3(0.0f,  0.0f,  0.0f),
+		glm::vec3(2.0f,  5.0f, -15.0f),
+		glm::vec3(-1.5f, -2.2f, -2.5f),
+		glm::vec3(-3.8f, -2.0f, -12.3f),
+		glm::vec3(2.4f, -0.4f, -3.5f),
+		glm::vec3(-1.7f,  3.0f, -7.5f),
+		glm::vec3(1.3f, -2.0f, -2.5f),
+		glm::vec3(1.5f,  2.0f, -2.5f),
+		glm::vec3(1.5f,  0.2f, -1.5f),
+		glm::vec3(-1.3f,  1.0f, -1.5f)
+	};
 
 	/////////////////////////////////////////////////////////////////////
 	// Create the main shader
 	Shader shader((getCurrentDirectory() + "/shaders/points.vs").c_str(), (getCurrentDirectory() + "/shaders/points.fs").c_str());
 
+	/////////////////////////////////////////////////////////////////////
+	// OpenGL settings
     glClearColor(0.f, 0.f, 0.f, 1.0f);
     glEnable(GL_PROGRAM_POINT_SIZE);
 
-    // Transform
-    glm::mat4 view;
-    view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
-                       glm::vec3(0.0f, 0.0f, 0.0f),
-                       glm::vec3(0.0f, 1.0f, 0.0f));
-
-    glm::vec3 trianglePositions[] = {
-            glm::vec3( 0.0f,  0.0f,  0.0f),
-            glm::vec3( 2.0f,  5.0f, -15.0f),
-            glm::vec3(-1.5f, -2.2f, -2.5f),
-            glm::vec3(-3.8f, -2.0f, -12.3f),
-            glm::vec3( 2.4f, -0.4f, -3.5f),
-            glm::vec3(-1.7f,  3.0f, -7.5f),
-            glm::vec3( 1.3f, -2.0f, -2.5f),
-            glm::vec3( 1.5f,  2.0f, -2.5f),
-            glm::vec3( 1.5f,  0.2f, -1.5f),
-            glm::vec3(-1.3f,  1.0f, -1.5f)
-    };
-
+	/////////////////////////////////////////////////////////////////////
+	// Camera constants
+	const float nearPlaneZ = -0.1f;
+	const float farPlaneZ = -100.0f;
+	const float verticalFieldOfView = 45.0f * PI / 180.0f;
 
 # ifdef _VR
 	vr::TrackedDevicePose_t trackedDevicePose[vr::k_unMaxTrackedDeviceCount];
@@ -256,17 +142,27 @@ int main() {
     {
 		assert(glGetError() == GL_NONE);
 
-		const float nearPlaneZ = -0.1f;
-		const float farPlaneZ = -100.0f;
-		const float verticalFieldOfView = 45.0f * PI / 180.0f;
-		Matrix4x4 eyeToHead[numEyes], projectionMatrix[numEyes], headToBodyMatrix;
-		glm::mat4 headToEyeGLM[numEyes], projectionGLM[numEyes], headToBodyMatrixGLM;
-		glm::mat4 bodyToHead;
+		GLfloat currentFrame = (GLfloat)glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
+
+		// Check if any events have been activated (key pressed, mouse moved etc.) and call corresponding response functions
+		glfwPollEvents();
+		doMovement();
+
+		/////////////////////////////////////////////////////////////////////
+		// Update matrices
+		glm::mat4 projectionGLM[numEyes];
 
 #   ifdef _VR
 		vr::VRCompositor()->WaitGetPoses(trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0);
 		assert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid);
 		glm::mat4x3 headToBody = convert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
+		
+		Matrix4x4 eyeToHead[numEyes], projectionMatrix[numEyes], headToBodyMatrix;
+		glm::mat4 headToEyeGLM[numEyes], headToBodyMatrixGLM;
+		glm::mat4 bodyToHead;
+		
 		bodyToHead = glm::inverse(glm::mat4(headToBody));
 
 		headToEyeGLM[0] = getHeadToEyeTransform(hmd, vr::Eye_Left);
@@ -275,22 +171,14 @@ int main() {
 		projectionGLM[0] = getProjectionMatrix(hmd, vr::Eye_Left, -nearPlaneZ, -farPlaneZ);
 		projectionGLM[1] = getProjectionMatrix(hmd, vr::Eye_Right, -nearPlaneZ, -farPlaneZ);
 
+		const glm::mat4 headToWorldGLM = glm::translate(glm::mat4(), camera.Position) * headToBodyMatrixGLM;
+
 #   else
-		projectionMatrix[0] = Matrix4x4::perspective(float(framebufferWidth), float(framebufferHeight), nearPlaneZ, farPlaneZ, verticalFieldOfView);
 		projectionGLM[0] = glm::perspective(verticalFieldOfView, (float)framebufferWidth / (float)framebufferHeight, -nearPlaneZ, -farPlaneZ);
 #   endif
 
-        GLfloat currentFrame = (GLfloat)glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
-        // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
-        glfwPollEvents();
-        doMovement();
-
-		const glm::mat4 headToWorldGLM = glm::translate(glm::mat4(), camera.Position) * headToBodyMatrixGLM;
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
-
+		/////////////////////////////////////////////////////////////////////
+		// Draw each eye on framebuffer texture
 		for (int eye = 0; eye < numEyes; ++eye) {
 			glBindFramebuffer(GL_FRAMEBUFFER, framebuffer[eye]);
 			glViewport(0, 0, framebufferWidth, framebufferHeight);
@@ -301,27 +189,34 @@ int main() {
 #		ifdef _VR
 			const glm::mat4 viewGLM = headToEyeGLM[eye] * bodyToHead * glm::translate(glm::mat4(), camera.Position);
 #		else
-			const glm::mat4 viewGLM = camera.GetViewMatrix();
+			const glm::mat4 view = camera.GetViewMatrix();
 #		endif			
 
 			shader.use();
 
-			GLint modelLoc = glGetUniformLocation(shader.program, "model");
+			/////////////////////////////////////////////////////////////////////
+			// Assign uniforms
+			
+			// View, projection
 			GLint viewLoc = glGetUniformLocation(shader.program, "view");
 			GLint projectionLoc = glGetUniformLocation(shader.program, "projection");
 			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projectionGLM[eye]));
-			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(viewGLM));
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
+			// Point size
 			int viewport[4];
 			glGetIntegerv(GL_VIEWPORT,viewport);
-			float heightOfNearPlane = (float)abs(viewport[3]-viewport[1]) /
-									  (2*(float)tan(0.5*camera.Zoom*3.1416/180.0));
-
 			GLint pointSizeLoc = glGetUniformLocation(shader.program, "pointSize");
-			GLint heightOfNearPlaneLoc = glGetUniformLocation(shader.program, "heightOfNearPlane");
 			glUniform1f(pointSizeLoc, 0.1f);
+
+			// Height of near plane
+			float heightOfNearPlane = (float)abs(viewport[3] - viewport[1]) / (2 * (float)tan(0.5*camera.Zoom*3.1416 / 180.0));
+			GLint heightOfNearPlaneLoc = glGetUniformLocation(shader.program, "heightOfNearPlane");
 			glUniform1f(heightOfNearPlaneLoc, heightOfNearPlane);
 
+			/////////////////////////////////////////////////////////////////////
+			// Draw models
+			GLint modelLoc = glGetUniformLocation(shader.program, "model");
 			for(GLuint i = 0; i < 10; i++)
 			{
 				glm::mat4 model = glm::mat4();
