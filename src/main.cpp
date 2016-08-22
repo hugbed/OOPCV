@@ -2,7 +2,7 @@
 
 // todo : this is ugly
 #define _WIN
-//#define _VR
+#define _VR
 
 #ifdef _WIN
 #include <windows.h>
@@ -151,30 +151,13 @@ int main() {
 		doMovement();
 
 		/////////////////////////////////////////////////////////////////////
-		// Update matrices
-		glm::mat4 projectionGLM[numEyes];
+		// Update transforms
+		glm::mat4 projection[numEyes], headToEye[numEyes], bodyToHead;
 
 #   ifdef _VR
-		vr::VRCompositor()->WaitGetPoses(trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0);
-		assert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid);
-		glm::mat4x3 headToBody = convert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
-		
-		Matrix4x4 eyeToHead[numEyes], projectionMatrix[numEyes], headToBodyMatrix;
-		glm::mat4 headToEyeGLM[numEyes], headToBodyMatrixGLM;
-		glm::mat4 bodyToHead;
-		
-		bodyToHead = glm::inverse(glm::mat4(headToBody));
-
-		headToEyeGLM[0] = getHeadToEyeTransform(hmd, vr::Eye_Left);
-		headToEyeGLM[1] = getHeadToEyeTransform(hmd, vr::Eye_Right);
-
-		projectionGLM[0] = getProjectionMatrix(hmd, vr::Eye_Left, -nearPlaneZ, -farPlaneZ);
-		projectionGLM[1] = getProjectionMatrix(hmd, vr::Eye_Right, -nearPlaneZ, -farPlaneZ);
-
-		const glm::mat4 headToWorldGLM = glm::translate(glm::mat4(), camera.Position) * headToBodyMatrixGLM;
-
+		getEyeTransformations(hmd, trackedDevicePose, numEyes, nearPlaneZ, farPlaneZ, projection, headToEye, bodyToHead);
 #   else
-		projectionGLM[0] = glm::perspective(verticalFieldOfView, (float)framebufferWidth / (float)framebufferHeight, -nearPlaneZ, -farPlaneZ);
+		projection[0] = glm::perspective(verticalFieldOfView, (float)framebufferWidth / (float)framebufferHeight, -nearPlaneZ, -farPlaneZ);
 #   endif
 
 		/////////////////////////////////////////////////////////////////////
@@ -187,7 +170,7 @@ int main() {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 #		ifdef _VR
-			const glm::mat4 viewGLM = headToEyeGLM[eye] * bodyToHead * glm::translate(glm::mat4(), camera.Position);
+			const glm::mat4 view = headToEye[eye] * bodyToHead * glm::translate(glm::mat4(), camera.Position);
 #		else
 			const glm::mat4 view = camera.GetViewMatrix();
 #		endif			
@@ -200,7 +183,7 @@ int main() {
 			// View, projection
 			GLint viewLoc = glGetUniformLocation(shader.program, "view");
 			GLint projectionLoc = glGetUniformLocation(shader.program, "projection");
-			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projectionGLM[eye]));
+			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection[eye]));
 			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
 			// Point size

@@ -22,6 +22,7 @@ running an OpenVR program.
 #include "openvr/openvr.h"
 #include <string>
 
+#include <GL/glew.h>
 #include "glm/glm.hpp"
 
 //#ifdef _WIN
@@ -109,68 +110,25 @@ vr::IVRSystem* initOpenVR(uint32_t& hmdWidth, uint32_t& hmdHeight) {
 /**
 */
 void getEyeTransformations
-(vr::IVRSystem*  hmd,
-	vr::TrackedDevicePose_t* trackedDevicePose,
+(vr::IVRSystem* hmd, vr::TrackedDevicePose_t* trackedDevicePose,
+	int				numEyes,
 	float           nearPlaneZ,
 	float           farPlaneZ,
-	float*          headToWorldRowMajor3x4,
-	float*          ltEyeToHeadRowMajor3x4,
-	float*          rtEyeToHeadRowMajor3x4,
-	float*          ltProjectionMatrixRowMajor4x4,
-	float*          rtProjectionMatrixRowMajor4x4) {
-
-	assert(nearPlaneZ < 0.0f && farPlaneZ < nearPlaneZ);
+	glm::mat4*      projection,
+	glm::mat4*      headToEye,
+	glm::mat4      &bodyToHead) {
 
 	vr::VRCompositor()->WaitGetPoses(trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0);
-
-#   if defined(_DEBUG) && 0
-	fprintf(stderr, "Devices tracked this frame: \n");
-	int poseCount = 0;
-	for (int d = 0; d < vr::k_unMaxTrackedDeviceCount; ++d) {
-		if (trackedDevicePose[d].bPoseIsValid) {
-			++poseCount;
-			switch (hmd->GetTrackedDeviceClass(d)) {
-			case vr::TrackedDeviceClass_Controller:        fprintf(stderr, "   Controller: ["); break;
-			case vr::TrackedDeviceClass_HMD:               fprintf(stderr, "   HMD: ["); break;
-			case vr::TrackedDeviceClass_Invalid:           fprintf(stderr, "   <invalid>: ["); break;
-			case vr::TrackedDeviceClass_Other:             fprintf(stderr, "   Other: ["); break;
-			case vr::TrackedDeviceClass_TrackingReference: fprintf(stderr, "   Reference: ["); break;
-			default:                                       fprintf(stderr, "   ???: ["); break;
-			}
-			for (int r = 0; r < 3; ++r) {
-				for (int c = 0; c < 4; ++c) {
-					fprintf(stderr, "%g, ", trackedDevicePose[d].mDeviceToAbsoluteTracking.m[r][c]);
-				}
-			}
-			fprintf(stderr, "]\n");
-		}
-	}
-	fprintf(stderr, "\n");
-#   endif
-
 	assert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid);
-	const vr::HmdMatrix34_t head = trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+	glm::mat4x3 headToBody = convert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
 
-	const vr::HmdMatrix34_t& ltMatrix = hmd->GetEyeToHeadTransform(vr::Eye_Left);
-	const vr::HmdMatrix34_t& rtMatrix = hmd->GetEyeToHeadTransform(vr::Eye_Right);
+	bodyToHead = glm::inverse(glm::mat4(headToBody));
 
-	for (int r = 0; r < 3; ++r) {
-		for (int c = 0; c < 4; ++c) {
-			ltEyeToHeadRowMajor3x4[r * 4 + c] = ltMatrix.m[r][c];
-			rtEyeToHeadRowMajor3x4[r * 4 + c] = rtMatrix.m[r][c];
-			headToWorldRowMajor3x4[r * 4 + c] = head.m[r][c];
-		}
-	}
+	headToEye[0] = getHeadToEyeTransform(hmd, vr::Eye_Left);
+	headToEye[1] = getHeadToEyeTransform(hmd, vr::Eye_Right);
 
-	const vr::HmdMatrix44_t& ltProj = hmd->GetProjectionMatrix(vr::Eye_Left, -nearPlaneZ, -farPlaneZ, vr::API_OpenGL);
-	const vr::HmdMatrix44_t& rtProj = hmd->GetProjectionMatrix(vr::Eye_Right, -nearPlaneZ, -farPlaneZ, vr::API_OpenGL);
-
-	for (int r = 0; r < 4; ++r) {
-		for (int c = 0; c < 4; ++c) {
-			ltProjectionMatrixRowMajor4x4[r * 4 + c] = ltProj.m[r][c];
-			rtProjectionMatrixRowMajor4x4[r * 4 + c] = rtProj.m[r][c];
-		}
-	}
+	projection[0] = getProjectionMatrix(hmd, vr::Eye_Left, -nearPlaneZ, -farPlaneZ);
+	projection[1] = getProjectionMatrix(hmd, vr::Eye_Right, -nearPlaneZ, -farPlaneZ);
 }
 
 
