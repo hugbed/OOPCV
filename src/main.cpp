@@ -173,8 +173,7 @@ int main() {
 	const int windowHeight = 720;
 	const int windowWidth = (framebufferWidth * windowHeight) / framebufferHeight;
     GLFWwindow *window = nullptr;
-    //if (!initWindow(windowWidth, windowHeight, window)) return -1;
-	window = initOpenGL(windowWidth, windowHeight, "minimalOpenGL");
+    if (!initWindow(windowWidth, windowHeight, window)) return -1;
 
     // Set the required callback functions
     glfwSetKeyCallback(window, key_callback);
@@ -265,9 +264,6 @@ int main() {
 		glm::mat4 bodyToHead;
 
 #   ifdef _VR
-		//getEyeTransformations(hmd, trackedDevicePose, nearPlaneZ, farPlaneZ, headToBodyMatrix.data, eyeToHead[0].data, eyeToHead[1].data, projectionMatrix[0].data, projectionMatrix[1].data);
-		//getEyeTransformations(hmd, trackedDevicePose, nearPlaneZ, farPlaneZ, glm::value_ptr(headToBodyMatrixGLM), glm::value_ptr(headToEyeGLM[0]), glm::value_ptr(headToEyeGLM[1]), glm::value_ptr(projectionGLM[0]), glm::value_ptr(projectionGLM[1]));
-
 		vr::VRCompositor()->WaitGetPoses(trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0);
 		assert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid);
 		glm::mat4x3 headToBody = convert(trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
@@ -281,7 +277,7 @@ int main() {
 
 #   else
 		projectionMatrix[0] = Matrix4x4::perspective(float(framebufferWidth), float(framebufferHeight), nearPlaneZ, farPlaneZ, verticalFieldOfView);
-		projectionGLM[0] = glm::perspective(verticalFieldOfView, (float)framebufferWidth / (float)framebufferHeight, nearPlaneZ, farPlaneZ);
+		projectionGLM[0] = glm::perspective(verticalFieldOfView, (float)framebufferWidth / (float)framebufferHeight, -nearPlaneZ, -farPlaneZ);
 #   endif
 
         GLfloat currentFrame = (GLfloat)glfwGetTime();
@@ -291,8 +287,6 @@ int main() {
         // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
         glfwPollEvents();
         doMovement();
-
-		//view = camera.GetViewMatrix();
 
 		const glm::mat4 headToWorldGLM = glm::translate(glm::mat4(), camera.Position) * headToBodyMatrixGLM;
 		view = camera.GetViewMatrix();
@@ -348,7 +342,7 @@ int main() {
 
 		////////////////////////////////////////////////////////////////////////
 #	ifdef _VR
-		  // Tell the compositor to begin work immediately instead of waiting for the next WaitGetPoses() call
+		// Tell the compositor to begin work immediately instead of waiting for the next WaitGetPoses() call
 		vr::VRCompositor()->PostPresentHandoff();
 #   endif
 
