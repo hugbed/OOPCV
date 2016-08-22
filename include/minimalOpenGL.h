@@ -61,7 +61,7 @@ All 3D math from http://graphicscodex.com
 
 namespace GL
 {
-	void _check_gl_error() {
+	void checkError() {
 		GLenum err(glGetError());
 
 		while (err != GL_NO_ERROR) {

@@ -29,8 +29,9 @@
 #include "minimalOpenVR.h"
 #endif
 
-#include "matrix.h"
 #include "Camera.h"
+
+#define PI (3.1415927f)
 
 using std::cout;
 using std::endl;
@@ -169,8 +170,8 @@ int main() {
 			// Clear the colorbuffer
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-#		ifdef _VR
-			const glm::mat4 view = headToEye[eye] * bodyToHead * glm::translate(glm::mat4(), camera.Position);
+#		ifdef _VR												 // world to camera body
+			glm::mat4 view = headToEye[eye] * bodyToHead * glm::inverse(glm::translate(glm::mat4(), camera.Position));
 #		else
 			const glm::mat4 view = camera.GetViewMatrix();
 #		endif			
@@ -193,7 +194,7 @@ int main() {
 			glUniform1f(pointSizeLoc, 0.1f);
 
 			// Height of near plane
-			float heightOfNearPlane = (float)abs(viewport[3] - viewport[1]) / (2 * (float)tan(0.5*camera.Zoom*3.1416 / 180.0));
+			float heightOfNearPlane = (float)abs(viewport[3] - viewport[1]) / (2 * (float)tan(0.5*camera.Zoom*PI / 180.0));
 			GLint heightOfNearPlaneLoc = glGetUniformLocation(shader.program, "heightOfNearPlane");
 			glUniform1f(heightOfNearPlaneLoc, heightOfNearPlane);
 
