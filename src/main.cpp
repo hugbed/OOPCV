@@ -2,7 +2,7 @@
 
 // todo : this is ugly
 #define _WIN
-#define _VR
+//#define _VR
 
 #ifdef _WIN
 #include <windows.h>
@@ -289,7 +289,6 @@ int main() {
         doMovement();
 
 		const glm::mat4 headToWorldGLM = glm::translate(glm::mat4(), camera.Position) * headToBodyMatrixGLM;
-		view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
 
 		for (int eye = 0; eye < numEyes; ++eye) {
@@ -299,9 +298,12 @@ int main() {
 			// Clear the colorbuffer
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			// worldToBody (inverse?)
+#		ifdef _VR
 			const glm::mat4 viewGLM = headToEyeGLM[eye] * bodyToHead * glm::translate(glm::mat4(), camera.Position);
-			
+#		else
+			const glm::mat4 viewGLM = camera.GetViewMatrix();
+#		endif			
+
 			shader.use();
 
 			GLint modelLoc = glGetUniformLocation(shader.program, "model");
