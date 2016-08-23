@@ -2,7 +2,7 @@
 
 // todo : this is ugly
 #define _WIN
-#define _VR
+//#define _VR
 
 #ifdef _WIN
 #include <windows.h>
@@ -36,15 +36,18 @@
 using std::cout;
 using std::endl;
 
-const GLuint WIDTH = 800, HEIGHT = 600;
+struct TimeTracker {
+	GLfloat deltaTime = 0.0f;
+	GLfloat lastFrameTime = 0.0f;
+} timeTracker;
 
-GLfloat deltaTime = 0.0f;
-GLfloat lastFrame = 0.0f;
+struct InputTracker {
+	bool keys[1024];
+	GLfloat g_lastX = 400, g_lastY = 300;
+	bool g_firstMouse = true;
+} inputTracker;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-bool keys[1024];
-GLfloat g_lastX = 400, g_lastY = 300;
-bool g_firstMouse = true;
 
 #ifdef _VR
 vr::IVRSystem* hmd = nullptr;
@@ -143,9 +146,9 @@ int main() {
     {
 		assert(glGetError() == GL_NONE);
 
-		GLfloat currentFrame = (GLfloat)glfwGetTime();
-		deltaTime = currentFrame - lastFrame;
-		lastFrame = currentFrame;
+		GLfloat currentFrameTime = (GLfloat)glfwGetTime();
+		timeTracker.deltaTime = currentFrameTime - timeTracker.lastFrameTime;
+		timeTracker.lastFrameTime = currentFrameTime;
 
 		// Check if any events have been activated (key pressed, mouse moved etc.) and call corresponding response functions
 		glfwPollEvents();
@@ -259,36 +262,36 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         glfwSetWindowShouldClose(window, GL_TRUE);
 
     if (action == GLFW_PRESS)
-        keys[key] = true;
+		inputTracker.keys[key] = true;
     else if (action == GLFW_RELEASE)
-        keys[key] = false;
+		inputTracker.keys[key] = false;
 }
 
 void doMovement()
 {
-    if(keys[GLFW_KEY_W])
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if(keys[GLFW_KEY_S])
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if(keys[GLFW_KEY_A])
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if(keys[GLFW_KEY_D])
-        camera.ProcessKeyboard(RIGHT, deltaTime);
+    if(inputTracker.keys[GLFW_KEY_W])
+        camera.ProcessKeyboard(FORWARD, timeTracker.deltaTime);
+    if(inputTracker.keys[GLFW_KEY_S])
+        camera.ProcessKeyboard(BACKWARD, timeTracker.deltaTime);
+    if(inputTracker.keys[GLFW_KEY_A])
+        camera.ProcessKeyboard(LEFT, timeTracker.deltaTime);
+    if(inputTracker.keys[GLFW_KEY_D])
+        camera.ProcessKeyboard(RIGHT, timeTracker.deltaTime);
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-    if(g_firstMouse)
+    if(inputTracker.g_firstMouse)
     {
-        g_lastX = (GLfloat)xpos;
-        g_lastY = (GLfloat)ypos;
-        g_firstMouse = false;
+		inputTracker.g_lastX = (GLfloat)xpos;
+		inputTracker.g_lastY = (GLfloat)ypos;
+		inputTracker.g_firstMouse = false;
     }
 
-    GLfloat xoffset = (GLfloat)xpos - g_lastX;
-    GLfloat yoffset = g_lastY - (GLfloat)ypos;
-    g_lastX = (GLfloat)xpos;
-    g_lastY = (GLfloat)ypos;
+    GLfloat xoffset = (GLfloat)xpos - inputTracker.g_lastX;
+    GLfloat yoffset = inputTracker.g_lastY - (GLfloat)ypos;
+	inputTracker.g_lastX = (GLfloat)xpos;
+	inputTracker.g_lastY = (GLfloat)ypos;
 
     camera.ProcessMouseMovement(xoffset, yoffset);
 }
