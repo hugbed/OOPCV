@@ -94,7 +94,7 @@ int main() {
 
 	/////////////////////////////////////////////////////////////////
 	// Load vertex array buffers
-	Mesh currentMesh = GL::createTriangleMesh();
+	Mesh* currentMesh = nullptr;// = GL::createTriangleMesh();
 
 	glm::vec3 trianglePositions[] = {
 		glm::vec3(0.0f,  0.0f,  0.0f),
@@ -164,6 +164,13 @@ int main() {
 
 #		ifdef _VR												 // world to camera body
 			glm::mat4 view = headToEye[eye] * bodyToHead * glm::inverse(glm::translate(glm::mat4(), camera.Position));
+
+			glm::vec3 right(view[0]);
+			glm::vec3 front(view[2]);
+			glm::vec3 up(right * front);
+			camera.Up = up;
+			camera.Front = front;
+			camera.Right = right;
 #		else
 			const glm::mat4 view = camera.GetViewMatrix();
 #		endif			
@@ -183,7 +190,7 @@ int main() {
 			int viewport[4];
 			glGetIntegerv(GL_VIEWPORT,viewport);
 			GLint pointSizeLoc = glGetUniformLocation(shader.program, "pointSize");
-			glUniform1f(pointSizeLoc, 0.1f);
+			glUniform1f(pointSizeLoc, 0.02f);
 
 			// Height of near plane
 			float heightOfNearPlane = (float)abs(viewport[3] - viewport[1]) / (2 * (float)tan(0.5*camera.Zoom*PI / 180.0));
@@ -193,21 +200,33 @@ int main() {
 			/////////////////////////////////////////////////////////////////////
 			// Draw models
 
+			if (!subscriber.queue.empty()) {
+				Mesh newMesh = subscriber.queue.pop();
+
+				if (currentMesh == nullptr) {
+					currentMesh = new Mesh(newMesh.vertices, newMesh.indices);
+				}
+
+				currentMesh->updateData(newMesh.vertices, newMesh.indices);
+			}
+
 			// Draw triangles
 			glm::mat4 model = glm::mat4();
 			GLint modelLoc = glGetUniformLocation(shader.program, "model");
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-			//currentMesh.Draw(shader);
 
-			for(GLuint i = 0; i < 10; i++)
-			{
-				model = glm::translate(model, trianglePositions[i]);
-				GLfloat angle = 20.0f * i;
-				model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
-				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-				glPointSize(10.0f);
-				currentMesh.Draw(shader);
-			}
+			if (currentMesh)
+				currentMesh->Draw(shader);
+
+			//for(GLuint i = 0; i < 10; i++)
+			//{
+			//	model = glm::translate(model, trianglePositions[i]);
+			//	GLfloat angle = 20.0f * i;
+			//	model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
+			//	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+			//	glPointSize(10.0f);
+			//	currentMesh.Draw(shader);
+			//}
 
 #		ifdef _VR
 			{
@@ -241,9 +260,10 @@ int main() {
 	}
 #   endif
 
+	delete currentMesh;
+
     // Terminate GLFW, clearing any resources allocated by GLFW.
     glfwTerminate();
-    return 0;
 
     return 0;
 }

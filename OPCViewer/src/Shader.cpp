@@ -99,6 +99,11 @@ Shader::Shader(const GLchar* vertexPath, const GLchar* fragmentPath, const GLcha
     }
 }
 
+Shader::~Shader()
+{
+	//glDeleteProgram(this->program);
+}
+
 void Shader::checkCompileErrors(GLuint shader, std::string type)
 {
     GLint success;

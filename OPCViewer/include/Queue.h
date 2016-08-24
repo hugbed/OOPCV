@@ -51,10 +51,10 @@ public:
 			cond_.notify_one();
 	}
 
-	bool empty() const
+	bool empty()
 	{
 		std::unique_lock<std::mutex> mlock(mutex_);
-		return queue_.empty();;
+		return queue_.empty();
 	}
 
 	Queue() = default;

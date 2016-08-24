@@ -10,12 +10,12 @@
 using namespace std::chrono_literals;
 
 #include <geometry_msgs/Twist.h>
+#include <pcl_to_windows/PCLXYZRGB.h>
 
 class PointCloudSubscriber
 {
 public:
 	PointCloudSubscriber(char* rosMasterIP);
-	PointCloudSubscriber::~PointCloudSubscriber();
 
 	void run();
 
@@ -28,14 +28,15 @@ public:
 		std::this_thread::sleep_for(1s);
 	}
 
-	void callback(const geometry_msgs::Twist &msg);
+	void callback(const pcl_to_windows::PCLXYZRGB &msg);
 
 	Queue<Mesh> queue;
 
 private:
 	char* m_rosMasterIP;
-	std::thread* subscriberThread;
 	ros::NodeHandle m_nh;
+	std::thread subscriberThread;
+	size_t nbPoints;
 };
 
 // How to use it

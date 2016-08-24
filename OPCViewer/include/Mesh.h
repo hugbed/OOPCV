@@ -25,7 +25,9 @@ public:
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
 
-    Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices);
+	Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices);
+	~Mesh();
+	void Mesh::updateData(std::vector<Vertex> vertices, std::vector<GLuint> indices);
     void Draw(Shader shader);
 
 private:

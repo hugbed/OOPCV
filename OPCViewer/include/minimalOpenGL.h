@@ -166,9 +166,9 @@ namespace GL
 	{
 		Vertex vertices[] = {
 			// Positions                          // Colors
-			{ glm::vec3(0.5f, -0.5f, 0.0f),  glm::vec3(1.0f, 0.0f, 0.0f) },  // Bottom Right
-			{ glm::vec3(-0.5f, -0.5f, 0.0f),  glm::vec3(0.0f, 1.0f, 0.0f) },  // Bottom Left
-			{ glm::vec3(0.0f,  0.5f, 0.0f),  glm::vec3(0.0f, 0.0f, 1.0f) }   // Top
+			{ glm::vec3(0.5f, -0.5f, 0.0f),  glm::vec3(255.0f, 0.0f, 0.0f) },  // Bottom Right
+			{ glm::vec3(-0.5f, -0.5f, 0.0f),  glm::vec3(0.0f, 255.0f, 0.0f) },  // Bottom Left
+			{ glm::vec3(0.0f,  0.5f, 0.0f),  glm::vec3(0.0f, 0.0f, 255.0f) }   // Top
 		};
 
 		GLuint indices[] = {  // Note that we start from 0!
