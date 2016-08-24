@@ -360,6 +360,19 @@ namespace ros {
         return false;
       }
 
+	  /* Register a new subscriber */
+	  template<typename MsgT, typename TargetClass>
+	  bool subscribe(SubscriberClass< MsgT, TargetClass> & s) {
+		  for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
+			  if (subscribers[i] == 0) { // empty slot
+				  subscribers[i] = (Subscriber_*)&s;
+				  s.id_ = i + 100;
+				  return true;
+			  }
+		  }
+		  return false;
+	  }
+
       /* Register a new Service Server */
       template<typename MReq, typename MRes>
       bool advertiseService(ServiceServer<MReq,MRes>& srv){
@@ -475,7 +488,7 @@ namespace ros {
         log(rosserial_msgs::Log::WARN, msg);
       }
       void logerror(const char*msg){
-        log(rosserial_msgs::Log::ERROR, msg);
+        log(rosserial_msgs::Log::ERROR_LEVEL, msg);
       }
       void logfatal(const char*msg){
         log(rosserial_msgs::Log::FATAL, msg);

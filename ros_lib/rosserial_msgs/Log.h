@@ -17,7 +17,7 @@ namespace rosserial_msgs
       enum { ROSDEBUG = 0 };
       enum { INFO = 1 };
       enum { WARN = 2 };
-      enum { ERROR = 3 };
+      enum { ERROR_LEVEL = 3 };
       enum { FATAL = 4 };
 
     Log():

@@ -15,8 +15,6 @@ find_package(GLEW REQUIRED)
 message(STATUS "Found GLEW in ${GLEW_INCLUDE_PATH}")
 find_package(OpenVR REQUIRED)
 message(STATUS "Found OpenVR in ${OPENVR_INCLUDE_PATH}")
-# find_package(ASSIMP REQUIRED)
-# message(STATUS "Found ASSIMP in ${ASSIMP_INCLUDE_DIR}")
 
 # libraries
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")

@@ -56,10 +56,10 @@ namespace ros {
 
 
   /* Actual subscriber, templated on message type. */
-  template<typename MsgT>
+  template<typename MsgT, typename CallbackT = void(*)(const MsgT&)>
   class Subscriber: public Subscriber_{
     public:
-      typedef void(*CallbackT)(const MsgT&);
+      //typedef void(*CallbackT)(const MsgT&);
       MsgT msg;
 
       Subscriber(const char * topic_name, CallbackT cb, int endpoint=rosserial_msgs::TopicInfo::ID_SUBSCRIBER) :
@@ -81,6 +81,35 @@ namespace ros {
     private:
       CallbackT cb_;
       int endpoint_;
+  };
+
+  /* Actual subscriber, templated on message type. Suited for class member callback */
+  template<typename MsgT, typename TargetClass, typename CallbackT = void(TargetClass::*)(const MsgT&)>
+  class SubscriberClass : public Subscriber_ {
+  public:
+	  MsgT msg;
+	  TargetClass* instance;
+
+	  SubscriberClass(const char * topic_name, CallbackT cb, TargetClass* inst, int endpoint = rosserial_msgs::TopicInfo::ID_SUBSCRIBER) :
+		  cb_(cb),
+		  instance(inst),
+		  endpoint_(endpoint)
+	  {
+		  topic_ = topic_name;
+	  };
+
+	  virtual void callback(unsigned char* data) {
+		  msg.deserialize(data);
+		  ((*instance).*cb_)(msg);
+	  }
+
+	  virtual const char * getMsgType() { return this->msg.getType(); }
+	  virtual const char * getMsgMD5() { return this->msg.getMD5(); }
+	  virtual int getEndpointType() { return endpoint_; }
+
+  private:
+	  CallbackT cb_;
+	  int endpoint_;
   };
 
 }

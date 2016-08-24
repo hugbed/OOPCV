@@ -27,6 +27,7 @@
 
 #include "Camera.h"
 #include "FileIO.h"
+#include "PointCloudSubscriber.h"
 
 #define PI (3.1415927f)
 
@@ -93,7 +94,7 @@ int main() {
 
 	/////////////////////////////////////////////////////////////////
 	// Load vertex array buffers
-	Mesh triangleMesh = GL::createTriangleMesh();
+	Mesh currentMesh = GL::createTriangleMesh();
 
 	glm::vec3 trianglePositions[] = {
 		glm::vec3(0.0f,  0.0f,  0.0f),
@@ -107,6 +108,8 @@ int main() {
 		glm::vec3(1.5f,  0.2f, -1.5f),
 		glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
+
+	PointCloudSubscriber subscriber("10.51.87.103");
 
 	/////////////////////////////////////////////////////////////////////
 	// Create the main shader
@@ -190,21 +193,20 @@ int main() {
 			/////////////////////////////////////////////////////////////////////
 			// Draw models
 
-			// Draw airplane
+			// Draw triangles
 			glm::mat4 model = glm::mat4();
 			GLint modelLoc = glGetUniformLocation(shader.program, "model");
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+			//currentMesh.Draw(shader);
 
-			// Draw triangles
 			for(GLuint i = 0; i < 10; i++)
 			{
-				glm::mat4 model = glm::mat4();
 				model = glm::translate(model, trianglePositions[i]);
 				GLfloat angle = 20.0f * i;
 				model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
 				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 				glPointSize(10.0f);
-				triangleMesh.Draw(shader);
+				currentMesh.Draw(shader);
 			}
 
 #		ifdef _VR

@@ -50,7 +50,7 @@ public:
   {
     WSADATA wsaData;
     int result = WSAStartup (MAKEWORD (2, 2), &wsaData);
-    if (result)
+    if (result != NO_ERROR)
     {
       // TODO: do something more useful here with the error code
       std::cerr << "Could not initialize windows socket (" << result << ")" << std::endl;
@@ -152,7 +152,7 @@ protected:
     return ai_output;
   }
 
-        /**
+    /**
 	* Helper to connect the socket to a given address.
 	* @param server address of the server to connect to, linked list
 	*/
