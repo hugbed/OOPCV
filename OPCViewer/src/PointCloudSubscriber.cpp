@@ -23,7 +23,7 @@ void PointCloudSubscriber::callback(const pcl_to_windows::PCLXYZRGB &msg)
 	for (int i = 0; i < msg.x_length; i++) {
 		Vertex vertex =
 		{
-			5.0f * glm::vec3(msg.x[i], msg.y[i], msg.z[i]),
+			glm::vec3(msg.x[i], msg.y[i], msg.z[i]),
 			glm::vec3(msg.r[i], msg.g[i], msg.b[i])
 		};
 		vertices.push_back(vertex);

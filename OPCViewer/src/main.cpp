@@ -2,7 +2,7 @@
 
 // todo : this is ugly
 #define _WIN
-//#define _VR
+#define _VR
 
 // GLEW
 #define GLEW_STATIC
@@ -211,7 +211,8 @@ int main() {
 			}
 
 			// Draw triangles
-			glm::mat4 model = glm::mat4();
+			glm::mat4 model;
+			model = glm::rotate(glm::mat4(), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 			GLint modelLoc = glGetUniformLocation(shader.program, "model");
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
