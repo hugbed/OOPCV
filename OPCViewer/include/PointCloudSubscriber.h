@@ -18,16 +18,6 @@ public:
 	PointCloudSubscriber(char* rosMasterIP);
 
 	void run();
-
-	// mocks
-	void initNode() {}
-	void initSubscriber() {}
-	void nodeHandleSpin()
-	{
-		//callback();
-		std::this_thread::sleep_for(1s);
-	}
-
 	void callback(const pcl_to_windows::PCLXYZRGB &msg);
 
 	Queue<Mesh> queue;

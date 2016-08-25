@@ -180,4 +180,27 @@ namespace GL
 
 		return triangleMesh;
 	}
+
+	Mesh createPlane()
+	{
+		std::vector<Vertex> vertices;
+		std::vector<GLuint> indices;
+		vertices.reserve(40);
+		indices.reserve(40);
+
+		int i = 0;
+		for (float x = -20; x < 20; x++)
+		{
+			for (float z = -20; z < 20; z++)
+			{
+				Vertex vertex = { glm::vec3(x, 0.0f, z), glm::vec3(10.0f * (x + 20.0f), 10.0f * (z + 20.0f), 0.0f) };
+				vertices.push_back(vertex);
+				indices.push_back(i++);
+			}
+		}
+
+		Mesh mesh(vertices, indices);
+
+		return mesh;
+	}
 }

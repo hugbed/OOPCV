@@ -94,7 +94,9 @@ int main() {
 
 	/////////////////////////////////////////////////////////////////
 	// Load vertex array buffers
-	Mesh* currentMesh = nullptr;// = GL::createTriangleMesh();
+	//Mesh* currentMesh = nullptr;// = GL::createTriangleMesh();
+	//Mesh currentMesh = GL::createTriangleMesh();
+	Mesh currentMesh = GL::createPlane();
 
 	glm::vec3 trianglePositions[] = {
 		glm::vec3(0.0f,  0.0f,  0.0f),
@@ -109,7 +111,7 @@ int main() {
 		glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
 
-	PointCloudSubscriber subscriber("10.51.87.103");
+	//PointCloudSubscriber subscriber("10.51.87.103");
 
 	/////////////////////////////////////////////////////////////////////
 	// Create the main shader
@@ -165,9 +167,9 @@ int main() {
 #		ifdef _VR												 // world to camera body
 			glm::mat4 view = headToEye[eye] * bodyToHead * glm::inverse(glm::translate(glm::mat4(), camera.Position));
 
-			glm::vec3 right(view[0]);
-			glm::vec3 front(view[2]);
-			glm::vec3 up(right * front);
+			glm::vec3 right(view[0].x, -view[0].y, -view[0].z);
+			glm::vec3 front(view[2].x, view[2].y, -view[2].z);
+			glm::vec3 up(view[1]);
 			camera.Up = up;
 			camera.Front = front;
 			camera.Right = right;
@@ -190,7 +192,7 @@ int main() {
 			int viewport[4];
 			glGetIntegerv(GL_VIEWPORT,viewport);
 			GLint pointSizeLoc = glGetUniformLocation(shader.program, "pointSize");
-			glUniform1f(pointSizeLoc, 0.02f);
+			glUniform1f(pointSizeLoc, 0.01f);
 
 			// Height of near plane
 			float heightOfNearPlane = (float)abs(viewport[3] - viewport[1]) / (2 * (float)tan(0.5*camera.Zoom*PI / 180.0));
@@ -200,24 +202,26 @@ int main() {
 			/////////////////////////////////////////////////////////////////////
 			// Draw models
 
-			if (!subscriber.queue.empty()) {
-				Mesh newMesh = subscriber.queue.pop();
+			//if (!subscriber.queue.empty()) {
+			//	Mesh newMesh = subscriber.queue.pop();
 
-				if (currentMesh == nullptr) {
-					currentMesh = new Mesh(newMesh.vertices, newMesh.indices);
-				}
+			//	if (currentMesh == nullptr) {
+			//		currentMesh = new Mesh(newMesh.vertices, newMesh.indices);
+			//	}
 
-				currentMesh->updateData(newMesh.vertices, newMesh.indices);
-			}
+			//	currentMesh->updateData(newMesh.vertices, newMesh.indices);
+			//}
 
 			// Draw triangles
 			glm::mat4 model;
-			model = glm::rotate(glm::mat4(), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+			//model = glm::rotate(glm::mat4(), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 			GLint modelLoc = glGetUniformLocation(shader.program, "model");
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-			if (currentMesh)
+			/*if (currentMesh)
 				currentMesh->Draw(shader);
+*/
+			currentMesh.Draw(shader);
 
 			//for(GLuint i = 0; i < 10; i++)
 			//{
@@ -261,7 +265,7 @@ int main() {
 	}
 #   endif
 
-	delete currentMesh;
+	//delete currentMesh;
 
     // Terminate GLFW, clearing any resources allocated by GLFW.
     glfwTerminate();
