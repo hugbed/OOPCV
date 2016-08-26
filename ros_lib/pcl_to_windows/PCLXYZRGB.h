@@ -12,6 +12,8 @@ namespace pcl_to_windows
   class PCLXYZRGB : public ros::Msg
   {
     public:
+      uint32_t cld_total;
+      uint32_t cld_num;
       uint32_t x_length;
       float st_x;
       float * x;
@@ -32,6 +34,8 @@ namespace pcl_to_windows
       float * b;
 
     PCLXYZRGB():
+      cld_total(0),
+      cld_num(0),
       x_length(0), x(NULL),
       y_length(0), y(NULL),
       z_length(0), z(NULL),
@@ -44,6 +48,16 @@ namespace pcl_to_windows
     virtual int serialize(unsigned char *outbuffer) const
     {
       int offset = 0;
+      *(outbuffer + offset + 0) = (this->cld_total >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->cld_total >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (this->cld_total >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (this->cld_total >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->cld_total);
+      *(outbuffer + offset + 0) = (this->cld_num >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->cld_num >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (this->cld_num >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (this->cld_num >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->cld_num);
       *(outbuffer + offset + 0) = (this->x_length >> (8 * 0)) & 0xFF;
       *(outbuffer + offset + 1) = (this->x_length >> (8 * 1)) & 0xFF;
       *(outbuffer + offset + 2) = (this->x_length >> (8 * 2)) & 0xFF;
@@ -152,6 +166,16 @@ namespace pcl_to_windows
     virtual int deserialize(unsigned char *inbuffer)
     {
       int offset = 0;
+      this->cld_total =  ((uint32_t) (*(inbuffer + offset)));
+      this->cld_total |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      this->cld_total |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      this->cld_total |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      offset += sizeof(this->cld_total);
+      this->cld_num =  ((uint32_t) (*(inbuffer + offset)));
+      this->cld_num |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      this->cld_num |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      this->cld_num |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      offset += sizeof(this->cld_num);
       uint32_t x_lengthT = ((uint32_t) (*(inbuffer + offset))); 
       x_lengthT |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1); 
       x_lengthT |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2); 
@@ -288,7 +312,7 @@ namespace pcl_to_windows
     }
 
     const char * getType(){ return "pcl_to_windows/PCLXYZRGB"; };
-    const char * getMD5(){ return "4473e1b57d986812b994d35563a06c0f"; };
+    const char * getMD5(){ return "fedc9c50492f0dc997bb690d7724f3b1"; };
 
   };
 

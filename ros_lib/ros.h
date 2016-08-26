@@ -31,7 +31,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 
 namespace ros
 {
-typedef NodeHandle_<WindowsSocket> NodeHandle;
+typedef NodeHandle_<WindowsSocket, 25, 25, 48000, 48000> NodeHandle;
 }
 
 #endif

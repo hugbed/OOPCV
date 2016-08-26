@@ -165,9 +165,9 @@ namespace GL
 	Mesh createTriangleMesh()
 	{
 		Vertex vertices[] = {
-			// Positions                          // Colors
+			// Positions                    // Colors
 			{ glm::vec3(0.5f, -0.5f, 0.0f),  glm::vec3(255.0f, 0.0f, 0.0f) },  // Bottom Right
-			{ glm::vec3(-0.5f, -0.5f, 0.0f),  glm::vec3(0.0f, 255.0f, 0.0f) },  // Bottom Left
+			{ glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 255.0f, 0.0f) },  // Bottom Left
 			{ glm::vec3(0.0f,  0.5f, 0.0f),  glm::vec3(0.0f, 0.0f, 255.0f) }   // Top
 		};
 

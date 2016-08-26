@@ -23,6 +23,9 @@ public:
 	Queue<Mesh> queue;
 
 private:
+	std::vector<Vertex> vertices;
+	std::vector<GLuint> indices;
+
 	char* m_rosMasterIP;
 	ros::NodeHandle m_nh;
 	std::thread subscriberThread;
